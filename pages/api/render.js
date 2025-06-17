@@ -1,6 +1,12 @@
-export default async function handler(req, res) {
-  const { prompt, outputType } = req.body;
+// pages/api/render.ts
 
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const { prompt, format } = req.body;
   const replicateApiToken = process.env.REPLICATE_API_TOKEN;
 
   if (!replicateApiToken) {
@@ -8,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Generate Image with Stable Diffusion (SDXL)
+    // 1. Generate Image with SDXL
     const imageResponse = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -47,23 +53,25 @@ export default async function handler(req, res) {
     const audioData = await audioResponse.json();
     const audioUrl = await waitForPrediction(audioData, replicateApiToken);
 
-    // Return both links
+    // 3. Return audio + image, or later, video
     res.status(200).json({
+      format,
       image: imageUrl,
       audio: audioUrl,
-      type: outputType
+      url: format === 'mp3' ? audioUrl : 'VIDEO_NOT_IMPLEMENTED_YET' // update later
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('Error generating media:', err);
     res.status(500).json({ error: 'Error generating media' });
   }
 }
 
-// Helper function to wait until prediction is complete
-async function waitForPrediction(data, token) {
+// Polling function for prediction results
+async function waitForPrediction(data: any, token: string): Promise<string> {
   const predictionUrl = data?.urls?.get;
   let status = data?.status;
+
   while (status !== "succeeded" && status !== "failed") {
     await new Promise(r => setTimeout(r, 2000));
     const res = await fetch(predictionUrl, {
@@ -73,5 +81,6 @@ async function waitForPrediction(data, token) {
     status = json.status;
     if (status === "succeeded") return json.output[0];
   }
+
   throw new Error("Prediction failed");
 }

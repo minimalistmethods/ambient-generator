@@ -1,26 +1,29 @@
-// pages/index.tsx
 import { useState } from 'react';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [format, setFormat] = useState('mp4');
   const [loading, setLoading] = useState(false);
-  const [downloadUrl, setDownloadUrl] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setDownloadUrl('');
+    setAudioUrl('');
+    setImageUrl('');
+
     try {
       const res = await fetch('/api/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, format })
+        body: JSON.stringify({ prompt, outputType: format })
       });
       const data = await res.json();
-      setDownloadUrl(data.url);
+      setAudioUrl(data.audio);
+      setImageUrl(data.image);
     } catch (err) {
-      console.error('Error rendering video:', err);
+      console.error('Error rendering content:', err);
     } finally {
       setLoading(false);
     }
@@ -55,10 +58,18 @@ export default function Home() {
         </button>
       </form>
 
-      {downloadUrl && (
+      {imageUrl && (
         <div className="mt-6">
-          <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">
-            Download your {format.toUpperCase()}
+          <h2 className="text-lg font-semibold mb-2">Preview</h2>
+          <img src={imageUrl} alt="Generated fantasy scene" className="rounded shadow mb-4" />
+        </div>
+      )}
+
+      {audioUrl && (
+        <div className="mt-4">
+          <audio controls src={audioUrl} className="w-full" />
+          <a href={audioUrl} download className="block mt-2 text-blue-700 underline">
+            Download {format === 'mp3' ? 'MP3' : 'Audio'}
           </a>
         </div>
       )}

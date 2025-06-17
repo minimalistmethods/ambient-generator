@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Generate Image with Stable Diffusion (SDXL)
+    // 1. Generate Image with Stable Diffusion XL
     const imageResponse = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        version: "a9758cbfdb93825c0651a7e9c2b66067db3d6b3d6e43065c1d5a2987a0498e5c",
+        version: "7762fd07cf82c948538e41f63f77d685e02b063e37e496e96eefd46c929f9bdc", // Valid SDXL version
         input: {
           prompt: prompt,
           width: 1024,
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        version: "f5ac9c15b9e25d4c576e89f3f54e053b8e8b9ad622c9f803e4d89186df209f1f",
+        version: "8cf61ea6c56afd61d8f5b9ffd14d7c216c0a93844ce2d82ac1c9ecc9c7f24e05", // Valid Riffusion version
         input: {
           prompt_a: prompt,
           denoising: 0.75
@@ -57,12 +57,12 @@ export default async function handler(req, res) {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("Generation error:", err);
     res.status(500).json({ error: 'Error generating media' });
   }
 }
 
-// Helper to wait for completion
+// Wait for prediction to complete and return output URL
 async function waitForPrediction(data, token) {
   const predictionUrl = data?.urls?.get;
   let status = data?.status;

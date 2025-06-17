@@ -1,12 +1,9 @@
-// pages/api/render.ts
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-import type { NextApiRequest, NextApiResponse } from 'next';
-
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  const { prompt, format } = req.body;
+  const { prompt, outputType } = req.body;
   const replicateApiToken = process.env.REPLICATE_API_TOKEN;
 
   if (!replicateApiToken) {
@@ -14,7 +11,7 @@ export default async function handler(
   }
 
   try {
-    // 1. Generate Image with SDXL
+    // 1. Generate Image with Stable Diffusion (SDXL)
     const imageResponse = await fetch("https://api.replicate.com/v1/predictions", {
       method: "POST",
       headers: {
@@ -22,7 +19,7 @@ export default async function handler(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        version: "a9758cbfdb93825c0651a7e9c2b66067db3d6b3d6e43065c1d5a2987a0498e5c", // SDXL
+        version: "a9758cbfdb93825c0651a7e9c2b66067db3d6b3d6e43065c1d5a2987a0498e5c",
         input: {
           prompt: prompt,
           width: 1024,
@@ -42,7 +39,7 @@ export default async function handler(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        version: "f5ac9c15b9e25d4c576e89f3f54e053b8e8b9ad622c9f803e4d89186df209f1f", // Riffusion
+        version: "f5ac9c15b9e25d4c576e89f3f54e053b8e8b9ad622c9f803e4d89186df209f1f",
         input: {
           prompt_a: prompt,
           denoising: 0.75
@@ -53,25 +50,22 @@ export default async function handler(
     const audioData = await audioResponse.json();
     const audioUrl = await waitForPrediction(audioData, replicateApiToken);
 
-    // 3. Return audio + image, or later, video
     res.status(200).json({
-      format,
       image: imageUrl,
       audio: audioUrl,
-      url: format === 'mp3' ? audioUrl : 'VIDEO_NOT_IMPLEMENTED_YET' // update later
+      type: outputType
     });
 
   } catch (err) {
-    console.error('Error generating media:', err);
+    console.error(err);
     res.status(500).json({ error: 'Error generating media' });
   }
 }
 
-// Polling function for prediction results
-async function waitForPrediction(data: any, token: string): Promise<string> {
+// Helper to wait for completion
+async function waitForPrediction(data, token) {
   const predictionUrl = data?.urls?.get;
   let status = data?.status;
-
   while (status !== "succeeded" && status !== "failed") {
     await new Promise(r => setTimeout(r, 2000));
     const res = await fetch(predictionUrl, {
@@ -81,6 +75,5 @@ async function waitForPrediction(data: any, token: string): Promise<string> {
     status = json.status;
     if (status === "succeeded") return json.output[0];
   }
-
   throw new Error("Prediction failed");
 }
